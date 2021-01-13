@@ -22,8 +22,16 @@ def lang(doc):
 def learn(train_file):
     train_doc = pd.read_csv('Train.csv',header=0)
 
-    train = textsPrepocessing([doc for doc in train_doc['post']
-                               if lang(doc) == 'ru'])
+    train = []
+    label_encoder = LabelEncoder()
+    label_all = label_encoder.fit_transform(train_doc['emotion'])
+    label = []
+    for i, doc in enumerate(train_doc['post']):
+        if lang(doc) == 'ru':
+            train.append(doc)
+            label.append(label_all[i])
+
+    train = textsPrepocessing(train)
 
     word_vectorizer = text.TfidfVectorizer(
         analyzer='word', ngram_range=(1, 3),
@@ -40,8 +48,7 @@ def learn(train_file):
     filename = 'ngrams.sav'
     pickle.dump(ngrams_vectorizer, open(filename, 'wb'))
 
-    label_encoder = LabelEncoder()
-    label = label_encoder.fit_transform(train_doc['emotion'])
+
 
     filename = 'encoder.sav'
     pickle.dump(label_encoder, open(filename, 'wb'))
