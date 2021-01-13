@@ -1,9 +1,11 @@
 import pickle
 
 import langid as langid
+import numpy
 import pandas as pd
 
-from preprocessing import textPreprocessing
+from ml.preprocessing import textsPrepocessing
+from scipy.sparse import csr_matrix
 from sklearn.feature_extraction import text
 from sklearn.model_selection import cross_val_score
 from sklearn.neighbors import KNeighborsClassifier
@@ -12,10 +14,16 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.svm import LinearSVC
 
 
+def lang(doc):
+    l, _ = langid.classify(doc)
+    return l
+
+
 def learn(train_file):
     train_doc = pd.read_csv('Train.csv',header=0)
 
-    train = textPreprocessing([doc for doc in train_doc[0] if langid.classify(doc)[0] == 'ru'])
+    train = textsPrepocessing([doc for doc in train_doc['post']
+                               if lang(doc) == 'ru'])
 
     word_vectorizer = text.TfidfVectorizer(
         analyzer='word', ngram_range=(1, 3),
@@ -27,25 +35,31 @@ def learn(train_file):
         [('feats', FeatureUnion([('word_ngram', word_vectorizer), ('char_ngram', char_vectorizer),
                                  ])), ])
 
-    train_features = [e + wn for (e, wn) in zip([emo for (emo, w) in train], ngrams_vectorizer.fit_transform([''.join(w) for (emo, w) in train]))]
+    train_features = csr_matrix(numpy.hstack(([emo for (emo, w) in train], ngrams_vectorizer.fit_transform([''.join(w) for (emo, w) in train]).toarray())))
+    #train_features = [e + wn for (e, wn) in zip([emo for (emo, w) in train], ngrams_vectorizer.fit_transform([''.join(w) for (emo, w) in train]))]
     filename = 'ngrams.sav'
     pickle.dump(ngrams_vectorizer, open(filename, 'wb'))
 
     label_encoder = LabelEncoder()
-    label = label_encoder.fit_transform(train_doc[1])
+    label = label_encoder.fit_transform(train_doc['emotion'])
 
     filename = 'encoder.sav'
     pickle.dump(label_encoder, open(filename, 'wb'))
 
     best_model = LinearSVC(class_weight='balanced')
     f1_best = cross_val_score(best_model, train_features, label, cv=10, scoring='f1_macro').mean()
+    print(f1_best)
 
     for i in range(10, 100, 5):
         model = KNeighborsClassifier(n_neighbors=10, weights='distance')
-        f1 = cross_val_score(best_model, train_features, label, cv=10, scoring='f1_macro').mean()
+        f1 = cross_val_score(model, train_features, label, cv=10, scoring='f1_macro').mean()
+        print(f1)
         if (f1 > f1_best):
             best_model = model
             f1_best = f1
 
     filename = 'model.sav'
     pickle.dump(best_model, open(filename, 'wb'))
+
+
+learn('Train.csv')

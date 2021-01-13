@@ -232,25 +232,26 @@ def russian_emotion(text_ru):
     words = [pymorphy2.MorphAnalyzer().parse(unicode(word))[0].normal_form for word in text_ru.split() if word == "не" or word not in stop]
     emotions = {'интерес' : 0, 'радость' : 0, 'восхищение' : 0, 'гнев' : 0, 'отвращение' : 0, 'попугать' : 0,
                 'сюрприз' : 0, 'печаль' : 0}
-    countNo = 0
-    sign = 1
-    sn = BabelSenticNet('ru')
-    for word in words:
-        if word == 'не':
-            sign = -1
-            countNo += 1
-        else:
-            if (word in sn.data):
-                ems = sn.moodtags(word)
-                emotions[ems[0][1:]] += sign
-                emotions[ems[1][1:]] += sign
-            if sign == -1:
-                sign = 1
-    for e in emotions.keys():
-        emotions[e] /= (len(words) - countNo)
+    if (len(words) > 0):
+        countNo = 0
+        sign = 1
+        sn = BabelSenticNet('ru')
+        for word in words:
+            if word == 'не':
+                sign = -1
+                countNo += 1
+            else:
+                if (word in sn.data):
+                    ems = sn.moodtags(word)
+                    emotions[ems[0][1:]] += sign
+                    emotions[ems[1][1:]] += sign
+                if sign == -1:
+                    sign = 1
+        for e in emotions.keys():
+            emotions[e] /= (len(words) - countNo)
 
-    print(words)
-    return (words, emotions.values())
+    #print(words)
+    return ([e for e in emotions.values()], words)
 
 
 def textsPrepocessing(texts):

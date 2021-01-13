@@ -1,19 +1,22 @@
 import pickle
 
 import langid
+import numpy
 import pandas as pd
+from scipy.sparse import csr_matrix
 from sklearn.feature_extraction import text
+
+from ml.preprocessing import textsPrepocessing
 
 
 def classify(test_filename):
     test_doc = pd.read_csv(test_filename, header=0)
 
-    test = textPreprocessing([doc for doc in test_doc[0] if langid.classify(doc)[0] == 'ru'])
+    test = textsPrepocessing([doc for doc in test_doc[0] if langid.classify(doc)[0] == 'ru'])
 
     ngrams_vectorizer = pickle.load(open('ngrams.sav', 'rb'))
 
-    test_features = [e + wn for (e, wn) in zip([emo for (emo, w) in test],
-                                                ngrams_vectorizer.transform([''.join(w) for (emo, w) in test]))]
+    test_features = csr_matrix(numpy.hstack(([emo for (emo, w) in test], ngrams_vectorizer.fit_transform([''.join(w) for (emo, w) in test]).toarray())))
 
     label_encoder = pickle.load(open('encoder.sav', 'rb'))
 
